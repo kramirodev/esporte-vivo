@@ -10,16 +10,19 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD"),
     'host': os.getenv("DB_HOST"),
     "port": os.getenv("DB_PORT")
-}
+} \
 
 SCHEMA_SQL = """
 -- Ativa a extensão espacial para as coordenadas
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- MÓDULO 1: IDENTIDADE
+
 CREATE TABLE usuarios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    api_key UUID UNIQUE DEFAULT gen_random_uuid(),
     telefone VARCHAR(20) UNIQUE NOT NULL,
+    apelido VARCHAR(100) NOT NULL,
     nome VARCHAR(100) NOT NULL,
     trust_factor INT DEFAULT 100,
     status_conta VARCHAR(20) DEFAULT 'ativo',
