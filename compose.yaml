@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:senha123@db:5432/meubanco
+    depends_on:
+      - db
+
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: senha123
+      POSTGRES_DB: app_esportes
+    volumes:
+      # Caminho no seu PC : Caminho interno do container
+      - ./dados_postgres:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
