@@ -17,11 +17,11 @@ DB_NAME = os.getenv('DB_NAME')
 SQL_ALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 engine = create_engine(SQL_ALCHEMY_DATABASE_URL)
-_sessionLocal = sessionmaker(autocommit=False, autoflush=False)
+_sessionLocal = sessionmaker(autocommit=False, autoflush=False, bind = engine)
 
 def get_db():
     db = _sessionLocal()
     try:
         yield db
     finally:
-        db.close*()
+        db.close()
