@@ -11,6 +11,7 @@ from decimal import Decimal
 class UsuarioCreate(BaseModel):
     telefone: str = Field(..., max_length=20)
     nome: str = Field(..., max_length=100)
+    apelido: str = Field(..., max_length=50)
     geom_localizacao: Optional[str] = None # Ex: "POINT(-43.20 -22.90)"
 
 class UsuarioResponse(BaseModel):
@@ -24,6 +25,7 @@ class UsuarioResponse(BaseModel):
     premium_vence_em: Optional[datetime]
     criado_em: datetime
     geom_localizacao: Optional[str]
+    apelido: str
 
     model_config = ConfigDict(from_attributes=True)
 
