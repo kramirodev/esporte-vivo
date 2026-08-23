@@ -12,7 +12,8 @@ class UsuarioCreate(BaseModel):
     telefone: str = Field(..., max_length=20)
     nome: str = Field(..., max_length=100)
     apelido: str = Field(..., max_length=50)
-    geom_localizacao: Optional[str] = None # Ex: "POINT(-43.20 -22.90)"
+    latitude: Optional[float] 
+    longitude: Optional[float]
 
 class UsuarioResponse(BaseModel):
     id: UUID
@@ -24,7 +25,7 @@ class UsuarioResponse(BaseModel):
     is_premium: bool
     premium_vence_em: Optional[datetime]
     criado_em: datetime
-    geom_localizacao: Optional[str]
+    geom_localizacao: Optional[str] = None
     apelido: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -45,9 +46,10 @@ class EsporteResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class VincularEsportesRequest(BaseModel):
+    esporte_ids: list[int]
 
 class UsuarioEloCreate(BaseModel):
-    usuario_id: UUID
     esporte_id: int
 
 class UsuarioEloResponse(BaseModel):
@@ -64,23 +66,25 @@ class UsuarioEloResponse(BaseModel):
 # MÓDULO 3: DISPONIBILIDADE
 # ==========================================
 
-class DisponibilidadePadraoCreate(BaseModel):
-    usuario_id: UUID
-    esporte_id: int
+class JanelaTempo(BaseModel):
     dia_semana: int = Field(..., ge=0, le=6)
     hora_inicio: time
     hora_fim: time
-    geom_localizacao: Optional[str] = None
+
+class DisponibilidadePadraoCreate(BaseModel):
+    esporte_id: int
+    horarios: list[JanelaTempo] 
+    latitude: float
+    longitude: float
     raio_busca_km: Optional[int] = 10
 
 class DisponibilidadePadraoResponse(BaseModel):
     id: UUID
-    usuario_id: UUID
     esporte_id: int
     dia_semana: int
     hora_inicio: time
     hora_fim: time
-    geom_localizacao: Optional[str]
+    geom_localizacao: Optional[str] = None
     raio_busca_km: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -92,7 +96,8 @@ class DisponibilidadePadraoResponse(BaseModel):
 class LocalPartidaCreate(BaseModel):
     nome: str = Field(..., max_length=100)
     tipo_local: str = Field(..., max_length=20)
-    geom_localizacao: str 
+    latitude: float
+    longitude: float
     endereco: Optional[str] = Field(None, max_length=255)
     valor_hora: Optional[Decimal] = Decimal('0.00')
 
@@ -150,7 +155,6 @@ class PartidaJogadorResponse(BaseModel):
 
 class VotoPartidaCreate(BaseModel):
     partida_id: UUID
-    usuario_id: UUID
     voto_resultado: str = Field(..., max_length=20)
 
 class VotoPartidaResponse(BaseModel):
@@ -163,7 +167,6 @@ class VotoPartidaResponse(BaseModel):
 
 
 class DenunciaReportCreate(BaseModel):
-    denunciante_id: UUID
     denunciado_id: UUID
     partida_id: UUID
     motivo: str = Field(..., max_length=50)
@@ -197,7 +200,6 @@ class ItemCosmeticoResponse(BaseModel):
 
 
 class InventarioUsuarioCreate(BaseModel):
-    usuario_id: UUID
     item_id: int
 
 class InventarioUsuarioResponse(BaseModel):

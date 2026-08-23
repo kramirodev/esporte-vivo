@@ -1,5 +1,5 @@
 from sqlalchemy.ext.automap import automap_base
-from models import engine
+from app.database.conexao import engine
 
 _base = automap_base()
 _base.prepare(autoload_with=engine)
@@ -15,6 +15,6 @@ partida_jogador = _base.classes.partida_jogadores
 partida = _base.classes.partidas
 spatial_ref_sys = _base.classes.spatial_ref_sys  # Tabela interna do PostGIS
 usuario_elo = _base.classes.usuario_elo
-user = _base.classes.usuarios
+usuario = _base.classes.usuarios
 voto_partida = _base.classes.votos_partida
 

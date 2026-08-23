@@ -5,12 +5,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_CONFIG = {
-    "dbname": os.getenv('DB_NAME') ,
+    "dbname": os.getenv('DB_NAME'),
     "user": os.getenv('DB_USER'), 
     "password": os.getenv("DB_PASSWORD"),
     'host': os.getenv("DB_HOST"),
     "port": os.getenv("DB_PORT")
-} \
+}
 
 SCHEMA_SQL = """
 -- Ativa a extensão espacial para as coordenadas
@@ -24,6 +24,7 @@ CREATE TABLE usuarios (
     telefone VARCHAR(20) UNIQUE NOT NULL,
     apelido VARCHAR(100) NOT NULL,
     nome VARCHAR(100) NOT NULL,
+    is_admin BOOLEAN DEFAULT FALSE,
     trust_factor INT DEFAULT 100,
     status_conta VARCHAR(20) DEFAULT 'ativo',
     is_premium BOOLEAN DEFAULT FALSE,
@@ -139,16 +140,12 @@ def inicializar_banco():
         )
 
         conexao.set_client_encoding('UTF8')
-        
         cursor = conexao.cursor()
         
         print("Criando tabelas e extensões no banco de dados...")
-        
         cursor.execute(SCHEMA_SQL)
-        
         conexao.commit()
         print("Arquitetura criada com sucesso!")
-        
         
     except Exception as e:
         print(f"Erro ao conectar ou criar tabelas: {repr(e)}")
