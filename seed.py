@@ -34,13 +34,23 @@ def popular_banco_para_testes():
         
         # Cria o Elo pontuação aleatória entre 800 e 2200
         elo_aleatorio = random.randint(800, 2200)
+        
+        partidas_jogadas = random.randint(6,25)
+
+        partidas_vencidas = random.randint(1,partidas_jogadas)
+
+        partidas_empates = random.randint(0, partidas_jogadas - partidas_vencidas)
+
+        partidas_perdidas = partidas_jogadas - partidas_vencidas - partidas_empates
+
         novo_elo = models.usuario_elo(
             usuario_id=novo_usuario.id,
             esporte_id=esporte_id_teste,
             pontuacao_elo=elo_aleatorio,
-            partidas_jogadas=10,
-            vitorias=5,
-            derrotas=5
+            partidas_jogadas=partidas_jogadas,
+            vitorias=partidas_vencidas,
+            derrotas=partidas_perdidas,
+            empates=partidas_empates
         )
         db.add(novo_elo)
         

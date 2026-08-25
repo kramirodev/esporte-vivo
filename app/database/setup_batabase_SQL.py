@@ -48,6 +48,7 @@ CREATE TABLE usuario_elo (
     partidas_jogadas INT DEFAULT 0,
     vitorias INT DEFAULT 0,
     derrotas INT DEFAULT 0,
+    empates INT DEFAULT 0,
     PRIMARY KEY (usuario_id, esporte_id)
 );
 
