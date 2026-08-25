@@ -7,11 +7,25 @@ from app.database import models
 def popular_banco_para_testes():
     db = _sessionLocal()
     
-    esporte_id_teste = 1  
-    dia_teste = 6         
+    esporte = db.query(models.esportes).filter(models.esportes.nome == "Futebol").first()
+    if not esporte:
+        esporte = models.esportes(
+            nome="Futebol",
+            jogadores_por_time=5,
+            ativo=True
+        )
+        db.add(esporte)
+        db.commit()
+        db.refresh(esporte)
+        print(f"Esporte criado: Futebol (ID: {esporte.id})")
+
+    esporte_id_teste = esporte.id
+    dia_teste = 6  # Domingo
     
+    print("Criando 30 jogadores de teste...")
+
     for i in range(1, 31):
-        # Gera coordenadas próximas umas das outras raio de aprox. 5km a 10km
+        # Gera coordenadas próximas
         lat = -22.90 + random.uniform(-0.05, 0.05)
         lon = -43.20 + random.uniform(-0.05, 0.05)
         
@@ -32,15 +46,11 @@ def popular_banco_para_testes():
         db.commit() 
         db.refresh(novo_usuario)
         
-        # Cria o Elo pontuação aleatória entre 800 e 2200
+        # 3. Cria o Elo e Histórico consistente
         elo_aleatorio = random.randint(800, 2200)
-        
-        partidas_jogadas = random.randint(6,25)
-
-        partidas_vencidas = random.randint(1,partidas_jogadas)
-
+        partidas_jogadas = random.randint(6, 25)
+        partidas_vencidas = random.randint(0, partidas_jogadas)
         partidas_empates = random.randint(0, partidas_jogadas - partidas_vencidas)
-
         partidas_perdidas = partidas_jogadas - partidas_vencidas - partidas_empates
 
         novo_elo = models.usuario_elo(
@@ -54,7 +64,7 @@ def popular_banco_para_testes():
         )
         db.add(novo_elo)
         
-        # Cria a Disponibilidade  - Livre das 10h às 22h
+        # 4. Cria a Disponibilidade Padrão
         nova_disp = models.disponibilidade_padrao(
             usuario_id=novo_usuario.id,
             esporte_id=esporte_id_teste,
@@ -68,7 +78,7 @@ def popular_banco_para_testes():
         
     db.commit()
     db.close()
-    print("✅ 30 Jogadores criados com sucesso e prontos para o Matchmaking!")
+    print("30 Jogadores criados com sucesso e prontos para o Matchmaking!")
 
 if __name__ == "__main__":
     popular_banco_para_testes()
