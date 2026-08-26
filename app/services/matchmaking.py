@@ -14,8 +14,5 @@ def obter_peso_por_elo(pontuacao: int) -> float:
     if pontuacao >= 500:  return 0.60  # Bronze
     return 0.55                        # Iron
 
-
-def 
-
-def buscar_jogadores_compativeis(db: Session, local: models.local_partida, esporte_id: int):
-    
+def calcular_pontuacao_total(db: Session, jogador_id: int) -> int: 
+    pontuacao_total = db.query()
