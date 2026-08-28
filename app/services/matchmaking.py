@@ -1,18 +1,104 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from app.database import models
-from datetime import datetime
+import time
+from uuid import UUID
+from app.database.redis_conexao import redis_client
 
-def obter_peso_por_elo(pontuacao: int) -> float:
-    if pontuacao >= 4000: return 1.00  # Challenger
-    if pontuacao >= 3500: return 0.95  # Grandmaster
-    if pontuacao >= 3000: return 0.90  # Master
-    if pontuacao >= 2500: return 0.85  # Diamond
-    if pontuacao >= 2000: return 0.80  # Platinum
-    if pontuacao >= 1500: return 0.70  # Gold
-    if pontuacao >= 1000: return 0.65  # Silver
-    if pontuacao >= 500:  return 0.60  # Bronze
-    return 0.55                        # Iron
+# --- Auxiliares ---
 
-def calcular_pontuacao_total(db: Session, jogador_id: int) -> int: 
-    pontuacao_total = db.query()
+def obter_chave_fila(esporte_id: int) -> str:
+    return f"fila:esporte:{esporte_id}"
+
+def obter_chave_usuario(usuario_id: UUID) -> str:
+    return f"usuario_filas:{usuario_id}"
+
+# --- Operações de Fila ---
+
+def entrar_na_fila(usuario_id: UUID, esportes_ids: list[int]) -> dict:
+    chave_user = obter_chave_usuario(usuario_id)
+    id_user = str(usuario_id)
+    agora = time.time()
+
+    # Busca os IDs inscritos e garante a conversão para string
+    inscritos_raw = redis_client.smembers(chave_user)
+    ja_inscritos = []
+    for item in inscritos_raw:
+        if isinstance(item, bytes):
+            ja_inscritos.append(item.decode('utf-8'))
+        else:
+            ja_inscritos.append(str(item))
+
+    # Filtra apenas os esportes em que ainda não está inscrito
+    novos_esportes = []
+    for esp_id in esportes_ids:
+        if str(esp_id) not in ja_inscritos:
+            novos_esportes.append(esp_id)
+
+    if not novos_esportes:
+        return {"sucesso": False, "motivo": "Usuário já está em todas as filas selecionadas."}
+
+    pipe = redis_client.pipeline()
+    for esp_id in novos_esportes:
+        pipe.zadd(obter_chave_fila(esp_id), {id_user: agora})
+        pipe.sadd(chave_user, esp_id)
+    pipe.execute()
+
+    return {"sucesso": True, "esportes_adicionados": novos_esportes}
+
+
+def sair_da_fila(usuario_id: UUID, esporte_id: int | None = None) -> dict:
+    chave_user = obter_chave_usuario(usuario_id)
+    id_user = str(usuario_id)
+
+    esportes_remover = []
+
+    if esporte_id is not None:
+        esportes_remover.append(esporte_id)
+    else:
+        esportes_no_redis = redis_client.smembers(chave_user)
+        for esp in esportes_no_redis:
+            esportes_remover.append(int(esp))
+
+    if not esportes_remover:
+        return {"sucesso": False, "motivo": "Usuário não está em nenhuma fila."}
+
+    pipe = redis_client.pipeline()
+    for esp_id in esportes_remover:
+        pipe.zrem(obter_chave_fila(esp_id), id_user)
+        pipe.srem(chave_user, esp_id)
+    pipe.execute()
+
+    return {"sucesso": True, "esportes_removidos": esportes_remover}
+
+
+def consultar_status_usuario(usuario_id: UUID) -> dict:
+    chave_user = obter_chave_usuario(usuario_id)
+    id_user = str(usuario_id)
+    esportes = redis_client.smembers(chave_user)
+
+    if not esportes:
+        return {"em_fila": False, "filas_ativas": []}
+
+    agora = time.time()
+    filas_detalhes = []
+
+    for esp_id_str in esportes:
+        esp_id = int(esp_id_str)
+        chave_fila = obter_chave_fila(esp_id)
+
+        score = redis_client.zscore(chave_fila, id_user)
+        total = redis_client.zcard(chave_fila)
+
+        tempo_espera = 0
+        if score:
+            tempo_espera = int(agora - float(score))
+
+        filas_detalhes.append({
+            "esporte_id": esp_id,
+            "tempo_espera_segundos": tempo_espera,
+            "total_jogadores_na_fila": total
+        })
+
+    return {
+        "em_fila": True,
+        "total_filas_ativas": len(filas_detalhes),
+        "filas_ativas": filas_detalhes
+    }

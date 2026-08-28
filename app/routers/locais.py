@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import models
-from app.database.conexao import get_db
+from app.database.sqlalchemy_conexao import get_db
 from app.database.schemas import LocalPartidaResponse, LocalPartidaCreate
 from app.dependencies import get_is_admin
 

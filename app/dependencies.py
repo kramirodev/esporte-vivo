@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Security
 from fastapi.security import APIKeyHeader
 from sqlalchemy.orm import Session
-from app.database.conexao import get_db
+from app.database.sqlalchemy_conexao import get_db
 import app.database.models as models
 
 router = APIRouter()

@@ -208,3 +208,15 @@ class InventarioUsuarioResponse(BaseModel):
     equipado: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+# ==========================================
+# MÓDULO 8: REDIS + FILA
+# ==========================================1
+
+class EntrarFilaRequest(BaseModel):
+    esporte_ids: list[int]
+
+class FilaResponse(BaseModel):
+    sucesso: bool
+    mensagem: str
+    detalhes: dict | None = None

@@ -4,6 +4,7 @@ from app.routers.esportes import router as esporte_router
 from app.routers.locais import router as local_router
 from app.routers.disponibilidade import router as disponibilidade_router
 from app.routers.partidas import router as partidas_router
+from app.routers.fila import router as matchmaking_router
 
 app = FastAPI()
 
@@ -12,3 +13,4 @@ app.include_router(esporte_router)
 app.include_router(local_router)
 app.include_router(disponibilidade_router)
 app.include_router(partidas_router)
+app.include_router(matchmaking_router)

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.automap import automap_base
-from app.database.conexao import engine
+from app.database.sqlalchemy_conexao import engine
 
 _base = automap_base()
 _base.prepare(autoload_with=engine)

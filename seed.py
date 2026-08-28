@@ -1,7 +1,7 @@
 import random
 from datetime import time
 from sqlalchemy import func
-from app.database.conexao import _sessionLocal
+from app.database.sqlalchemy_conexao import _sessionLocal
 from app.database import models
 
 def popular_banco_para_testes():

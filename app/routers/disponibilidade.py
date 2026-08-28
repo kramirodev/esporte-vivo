@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import models
-from app.database.conexao import get_db
+from app.database.sqlalchemy_conexao import get_db
 from app.database.schemas import DisponibilidadePadraoCreate, DisponibilidadePadraoResponse
 from app.dependencies import get_current_user
 
