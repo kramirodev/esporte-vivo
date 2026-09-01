@@ -1,20 +1,46 @@
 services:
-  app:
+  api:
     build: .
-    environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:senha123@db:5432/meubanco
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
     depends_on:
       - db
+      - redis
+    volumes:
+      - .:/app
+
+  worker:
+    build: .
+    command: python worker.py
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app
 
   db:
     image: postgis/postgis:16-3.4-alpine
-    restart: always
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: senha123
-      POSTGRES_DB: app_esportes
-    volumes:
-      # Caminho no seu PC : Caminho interno do container
-      - ./dados_postgres:/var/lib/postgresql/data
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-senha123}
+      POSTGRES_DB: ${DB_NAME:-app_esportes}
     ports:
-      - "5433:5432"
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

@@ -1,17 +1,16 @@
-# Usa uma imagem oficial do Python, versão leve
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Define o diretório de trabalho dentro do container
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# Copia o arquivo de dependências para o container
 COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Instala as dependências
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copia todo o código do seu projeto para o container
 COPY . .
 
-# Comando para rodar a sua aplicação (ajuste 'main.py' para o nome do seu arquivo principal)
-CMD ["python", "main.py"]
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

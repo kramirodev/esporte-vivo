@@ -1,4 +1,13 @@
-venv/
-__pycache__/
+.git
+.venv
 .env
-.git/
+.env.*
+__pycache__
+.pytest_cache
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+.gitignore
+README.md
+requirements-dev.txt

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -14,23 +15,61 @@ from app.services.matchmaking import (
 from app.services.mmr import avaliar_partida, peso_elo
 from app.services.websocket_manager import manager
 
+logger = logging.getLogger(__name__)
+
 INTERVALO_WORKER_SEGUNDOS = 5
 TEMPO_LOCK_SEGUNDOS = 15
 
 
-def _obter_jogadores_balanceados(esporte_id: int, tamanho_time: int) -> list[tuple[str, int, str]]:
+def _filtrar_jogadores_ja_em_partida_ativa(db, jogadores: list[tuple[str, int, str]]) -> list[tuple[str, int, str]]:
+    usuarios_unicos: list[UUID] = []
+    usuarios_vistos: set[UUID] = set()
+    for usuario_id, _, _ in jogadores:
+        usuario_uuid = UUID(str(usuario_id))
+        if usuario_uuid in usuarios_vistos:
+            continue
+        usuarios_vistos.add(usuario_uuid)
+        usuarios_unicos.append(usuario_uuid)
+
+    if not usuarios_unicos:
+        return []
+
+    usuarios_ativos = db.query(models.partida_jogador.usuario_id).filter(
+        models.partida_jogador.usuario_id.in_(usuarios_unicos)
+    ).all()
+    usuarios_ativos_set = {UUID(str(usuario_id[0])) for usuario_id in usuarios_ativos}
+
+    jogadores_filtrados: list[tuple[str, int, str]] = []
+    usuarios_adicionados: set[UUID] = set()
+    for usuario_id, mmr, time in jogadores:
+        usuario_uuid = UUID(str(usuario_id))
+        if usuario_uuid in usuarios_ativos_set:
+            continue
+        if usuario_uuid in usuarios_adicionados:
+            continue
+        usuarios_adicionados.add(usuario_uuid)
+        jogadores_filtrados.append((usuario_id, mmr, time))
+
+    return jogadores_filtrados
+
+
+def _obter_jogadores_balanceados(esporte_id: int, tamanho_time: int, db=None) -> list[tuple[str, int, str]]:
     ids = redis_client.zrange(obter_chave_fila(esporte_id), 0, -1)
     mmrs = redis_client.hmget(obter_chave_mmr(esporte_id), ids)
-    jogadores = [(str(usuario_id), int(mmr or 1000)) for usuario_id, mmr in zip(ids, mmrs)]
+    jogadores = [(str(usuario_id), int(mmr or 1000), 'A') for usuario_id, mmr in zip(ids, mmrs)]
     jogadores.sort(key=lambda jogador: jogador[1], reverse=True)
+
+    if db is not None:
+        jogadores = _filtrar_jogadores_ja_em_partida_ativa(db, jogadores)
+
     selecionados = jogadores[:tamanho_time * 2]
-    times: list[list[tuple[str, int]]] = [[], []]
+    times: list[list[tuple[str, int, str]]] = [[], []]
     for indice, jogador in enumerate(selecionados):
         times[indice % 2].append(jogador)
     return [
         (usuario_id, mmr, 'A' if indice == 0 else 'B')
         for indice, time in enumerate(times)
-        for usuario_id, mmr in time
+        for usuario_id, mmr, _ in time
     ]
 
 
@@ -50,7 +89,7 @@ def _tentar_formar_partida(esporte_id: int) -> dict | None:
             redis_client.srem(CHAVE_FILAS_ATIVAS, esporte_id)
             return None
 
-        jogadores = _obter_jogadores_balanceados(esporte_id, esporte.jogadores_por_time)
+        jogadores = _obter_jogadores_balanceados(esporte_id, esporte.jogadores_por_time, db=db)
         if len(jogadores) < esporte.jogadores_por_time * 2:
             return None
 
@@ -102,6 +141,7 @@ def _tentar_formar_partida(esporte_id: int) -> dict | None:
             'quality_score': resultado.quality_score,
         }
     except Exception:
+        logger.exception("Erro ao tentar formar partida para esporte %s", esporte_id)
         db.rollback()
         raise
     finally:
@@ -112,19 +152,24 @@ def _tentar_formar_partida(esporte_id: int) -> dict | None:
 
 async def processar_filas() -> None:
     for esporte_id in redis_client.smembers(CHAVE_FILAS_ATIVAS):
-        partida = await asyncio.to_thread(_tentar_formar_partida, int(esporte_id))
+        esporte_id_int = int(esporte_id)
+        logger.debug("Processando fila do esporte %s", esporte_id_int)
+        partida = await asyncio.to_thread(_tentar_formar_partida, esporte_id_int)
         if partida:
             usuarios = partida['times']['A'] + partida['times']['B']
+            logger.info("Partida formada no esporte %s: %s", esporte_id_int, partida['partida_id'])
             await manager.broadcast(usuarios, {'evento': 'partida_formada', 'partida': partida})
 
 
 async def executar_worker(stop_event: asyncio.Event) -> None:
+    logger.info("Worker de matchmaking inicializado.")
     while not stop_event.is_set():
         try:
             await processar_filas()
         except Exception:
-            pass
+            logger.exception("Erro inesperado no loop do worker.")
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=INTERVALO_WORKER_SEGUNDOS)
         except asyncio.TimeoutError:
             continue
+    logger.info("Worker de matchmaking finalizado.")
