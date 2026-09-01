@@ -2,6 +2,8 @@ import time
 from uuid import UUID
 from app.database.redis_conexao import redis_client
 
+CHAVE_FILAS_ATIVAS = 'filas:ativas'
+
 # --- Auxiliares ---
 
 def obter_chave_fila(esporte_id: int) -> str:
@@ -10,9 +12,16 @@ def obter_chave_fila(esporte_id: int) -> str:
 def obter_chave_usuario(usuario_id: UUID) -> str:
     return f"usuario_filas:{usuario_id}"
 
+def obter_chave_mmr(esporte_id: int) -> str:
+    return f"fila:esporte:{esporte_id}:mmr"
+
 # --- Operações de Fila ---
 
-def entrar_na_fila(usuario_id: UUID, esportes_ids: list[int]) -> dict:
+def entrar_na_fila(
+    usuario_id: UUID,
+    esportes_ids: list[int],
+    mmr_por_esporte: dict[int, int]
+) -> dict:
     chave_user = obter_chave_usuario(usuario_id)
     id_user = str(usuario_id)
     agora = time.time()
@@ -39,6 +48,8 @@ def entrar_na_fila(usuario_id: UUID, esportes_ids: list[int]) -> dict:
     for esp_id in novos_esportes:
         pipe.zadd(obter_chave_fila(esp_id), {id_user: agora})
         pipe.sadd(chave_user, esp_id)
+        pipe.hset(obter_chave_mmr(esp_id), id_user, mmr_por_esporte[esp_id])
+        pipe.sadd(CHAVE_FILAS_ATIVAS, esp_id)
     pipe.execute()
 
     return {"sucesso": True, "esportes_adicionados": novos_esportes}
@@ -64,7 +75,12 @@ def sair_da_fila(usuario_id: UUID, esporte_id: int | None = None) -> dict:
     for esp_id in esportes_remover:
         pipe.zrem(obter_chave_fila(esp_id), id_user)
         pipe.srem(chave_user, esp_id)
+        pipe.hdel(obter_chave_mmr(esp_id), id_user)
     pipe.execute()
+
+    for esp_id in esportes_remover:
+        if redis_client.zcard(obter_chave_fila(esp_id)) == 0:
+            redis_client.srem(CHAVE_FILAS_ATIVAS, esp_id)
 
     return {"sucesso": True, "esportes_removidos": esportes_remover}
 

@@ -14,11 +14,33 @@ router = APIRouter(
 @router.post('/entrar', status_code=status.HTTP_200_OK)
 def entrar_fila(
     requisicao: EntrarFilaRequest,
-    usuario_atual: models.usuario = Depends(get_current_user)
+    usuario_atual: models.usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
+    esporte_ids = list(dict.fromkeys(requisicao.esporte_ids))
+    esportes = db.query(models.esporte).filter(
+        models.esporte.id.in_(esporte_ids),
+        models.esporte.ativo.is_(True)
+    ).all()
+    esportes_por_id = {esporte.id: esporte for esporte in esportes}
+    inexistentes = [esporte_id for esporte_id in esporte_ids if esporte_id not in esportes_por_id]
+    if inexistentes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Esportes inválidos ou inativos: {inexistentes}"
+        )
+
+    elos = db.query(models.usuario_elo).filter(
+        models.usuario_elo.usuario_id == usuario_atual.id,
+        models.usuario_elo.esporte_id.in_(esporte_ids)
+    ).all()
+    mmr_por_esporte = {elo.esporte_id: elo.pontuacao_elo for elo in elos}
+    mmr_por_esporte.update({esporte_id: 1000 for esporte_id in esporte_ids if esporte_id not in mmr_por_esporte})
+
     resultado = entrar_na_fila(
         usuario_id=usuario_atual.id,
-        esportes_ids=requisicao.esporte_ids  # <-- Corrigido: esportes_ids (plural)
+        esportes_ids=esporte_ids,
+        mmr_por_esporte=mmr_por_esporte
     )
 
     if not resultado['sucesso']:

@@ -211,7 +211,7 @@ class InventarioUsuarioResponse(BaseModel):
 
 # ==========================================
 # MÓDULO 8: REDIS + FILA
-# ==========================================1
+# ==========================================
 
 class EntrarFilaRequest(BaseModel):
     esporte_ids: list[int]
